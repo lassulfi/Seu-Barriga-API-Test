@@ -76,7 +76,23 @@ public class BarrigaTests extends BaseTest {
 			.statusCode(200)
 			.body("id", is(22091))
 			.body("nome", is("Conta alterada para testes"))
-	;
+		;
 		
+	}
+	
+	@Test
+	public void naoDeveIncluirContaComNomeRepetido() {
+		Map<String, String> conta = new HashMap<>();
+		conta.put("nome", "Conta alterada para testes");
+		
+		given()
+			.body(conta)
+			.header("Authorization", "JWT " + token)
+		.when()
+			.post("/contas")
+		.then()
+			.statusCode(400)
+			.body("error", is("Já existe uma conta com esse nome!"))
+		;
 	}
 }
