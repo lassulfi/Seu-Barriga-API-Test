@@ -10,6 +10,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import br.com.seubarriga.core.BaseTest;
+import br.com.seubarriga.core.domain.Transacao;
+import br.com.seubarriga.core.domain.enums.TipoMovimentacao;
 
 public class BarrigaTests extends BaseTest {
 	
@@ -93,6 +95,21 @@ public class BarrigaTests extends BaseTest {
 		.then()
 			.statusCode(400)
 			.body("error", is("Já existe uma conta com esse nome!"))
+		;
+	}
+	
+	@Test
+	public void deveInserirMovimentacaoComSucesso() {
+		Transacao transacao = new Transacao(22091, "Descrição da movimentação", 
+				"Envolvido na movimentação", TipoMovimentacao.RECEITA, "01/01/2000", "10/05/2010", 100f, true);
+		
+		given()
+			.header("Authorization", "JWT " + token)
+			.body(transacao)
+		.when()
+			.post("/transacoes")
+		.then()
+			.statusCode(201)
 		;
 	}
 }
