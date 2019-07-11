@@ -1,10 +1,8 @@
 package br.com.seubarriga.core;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.lessThan;
 
 import org.junit.BeforeClass;
-import org.junit.Test;
 
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
