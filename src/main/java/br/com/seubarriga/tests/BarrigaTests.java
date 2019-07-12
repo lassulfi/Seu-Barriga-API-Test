@@ -1,6 +1,7 @@
 package br.com.seubarriga.tests;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
@@ -171,6 +172,19 @@ public class BarrigaTests extends BaseTest {
 		.then()
 			.statusCode(500)
 			.body("constraint", is("transacoes_conta_id_foreign"))
+		;
+	}
+	
+	@Test
+	public void deveCalcularSaldoDasContas() {
+		given()
+			.header("Authorization", "JWT " + token)
+		.when()
+			.get("/saldo")
+		.then()
+			.log().all()
+			.statusCode(200)
+			.body("find{it.conta_id == 22091}.saldo", is("650"))
 		;
 	}
 	
