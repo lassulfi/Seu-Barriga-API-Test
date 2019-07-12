@@ -161,6 +161,19 @@ public class BarrigaTests extends BaseTest {
 		;
 	}
 	
+	@Test
+	public void naoDeveRemoverContaComMovimentacao() {
+		
+		given()
+			.header("Authorization", "JWT " + token)
+		.when()
+			.delete("/contas/22091")
+		.then()
+			.statusCode(500)
+			.body("constraint", is("transacoes_conta_id_foreign"))
+		;
+	}
+	
 	private Transacao getTransacaoValida() {
 		return new Transacao(22091, "Descrição da movimentação", 
 				"Envolvido na movimentação", TipoMovimentacao.RECEITA, "01/01/2000", "10/05/2010", 100f, true);
