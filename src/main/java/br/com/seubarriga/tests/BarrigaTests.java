@@ -1,10 +1,13 @@
 package br.com.seubarriga.tests;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -102,8 +105,7 @@ public class BarrigaTests extends BaseTest {
 	
 	@Test
 	public void deveInserirMovimentacaoComSucesso() {
-		Transacao transacao = new Transacao(22091, "Descrição da movimentação", 
-				"Envolvido na movimentação", TipoMovimentacao.RECEITA, "01/01/2000", "10/05/2010", 100f, true);
+		Transacao transacao = this.getTransacaoValida();
 		
 		given()
 			.header("Authorization", "JWT " + token)
@@ -132,5 +134,35 @@ public class BarrigaTests extends BaseTest {
 					"Descrição é obrigatório", "Interessado é obrigatório", "Valor é obrigatório", "Valor deve ser um número", 
 					"Conta é obrigatório"))
 		;
+	}
+	
+	@Test
+	public void naoDeveCadastrarMovimentacaoFutura() {
+		Transacao transacao = this.getTransacaoValida();
+		
+		SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/YYYY");
+		Calendar calendar = Calendar.getInstance();
+		int currentDay = calendar.get(Calendar.DAY_OF_MONTH);
+		calendar.set(Calendar.DAY_OF_MONTH, currentDay + 1);
+		
+		transacao.setData_transacao(sdf.format(calendar.getTime()));
+		
+		given()
+			.header("Authorization", "JWT " + token)
+			.body(transacao)
+		.when()
+			.post("/transacoes")
+		.then()
+			.statusCode(400)
+			.body("$", hasSize(1))
+			.body("param", hasItem("data_transacao"))
+			.body("msg", hasItem("Data da Movimentação deve ser menor ou igual à data atual"))
+			.body("value",hasItem(transacao.getData_transacao()))
+		;
+	}
+	
+	private Transacao getTransacaoValida() {
+		return new Transacao(22091, "Descrição da movimentação", 
+				"Envolvido na movimentação", TipoMovimentacao.RECEITA, "01/01/2000", "10/05/2010", 100f, true);
 	}
 }
