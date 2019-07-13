@@ -7,46 +7,18 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import br.com.seubarriga.core.BaseTest;
 import br.com.seubarriga.core.domain.Transacao;
-import br.com.seubarriga.core.domain.enums.TipoMovimentacao;
+import br.com.seubarriga.core.utils.BarrigaUtils;
 import br.com.seubarriga.core.utils.DateUtils;
-import io.restassured.RestAssured;
 
 public class MovimentacaoTest extends BaseTest {
-
-	@BeforeClass
-	public static void login() {
-		//login na api
-		//receber token
-		Map<String, String> login = new HashMap<>();
-		login.put("email", "luis@daniel");
-		login.put("senha", "123456");
-		
-		String token = given()
-			.body(login)
-		.when()
-			.post("/signin")
-		.then()
-			.statusCode(200)
-			.extract().path("token")
-		;
-		
-		RestAssured.requestSpecification.header("Authorization", "JWT " + token);
-		
-		//Reset da aplicacao
-		RestAssured.get("/reset").then().statusCode(200);
-	}
 	
 	@Test
 	public void deveInserirMovimentacaoComSucesso() {
-		Transacao transacao = this.getTransacaoValida();
+		Transacao transacao = BarrigaUtils.getTransacaoValida();
 		
 		given()
 			.body(transacao)
@@ -83,7 +55,7 @@ public class MovimentacaoTest extends BaseTest {
 	
 	@Test
 	public void naoDeveCadastrarMovimentacaoFutura() {
-		Transacao transacao = this.getTransacaoValida();	
+		Transacao transacao = BarrigaUtils.getTransacaoValida();	
 		transacao.setData_transacao(DateUtils.getDataDiferencaDias(2));
 		
 		given()
@@ -101,7 +73,7 @@ public class MovimentacaoTest extends BaseTest {
 	
 	@Test
 	public void naoDeveRemoverContaComMovimentacao() {
-		Integer contaId = this.getIdContaPeloNome("Conta com movimentacao");		
+		Integer contaId = BarrigaUtils.getIdContaPeloNome("Conta com movimentacao");		
 		
 		given()
 			.pathParam("id", contaId)
@@ -115,7 +87,7 @@ public class MovimentacaoTest extends BaseTest {
 	
 	@Test
 	public void deveRemoverMovimentacao() {
-		Integer movimentacaoId = this.getIdMovimentacaoPelaDescricao("Movimentacao para exclusao");
+		Integer movimentacaoId = BarrigaUtils.getIdMovimentacaoPelaDescricao("Movimentacao para exclusao");
 		
 		given()
 			.pathParam("id", movimentacaoId)
@@ -124,19 +96,5 @@ public class MovimentacaoTest extends BaseTest {
 		.then()
 			.statusCode(204)
 		;
-	}
-	
-	private Integer getIdMovimentacaoPelaDescricao(String descricao) {
-		return RestAssured.get("/transacoes?descricao=" + descricao).then().extract().path("id[0]");
-	}
-	
-	private Integer getIdContaPeloNome(String nome) {
-		return RestAssured.get("/contas?nome=" + nome).then().extract().path("id[0]");
-	}
-	
-	private Transacao getTransacaoValida() {
-		return new Transacao(this.getIdContaPeloNome("Conta para movimentacoes"), "Descrição da movimentação", 
-				"Envolvido na movimentação", TipoMovimentacao.RECEITA, DateUtils.getDataDiferencaDias(-1), 
-				DateUtils.getDataDiferencaDias(5), 100f, true);
 	}
 }
