@@ -6,31 +6,37 @@ import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 
 import br.com.seubarriga.core.BaseTest;
 import br.com.seubarriga.core.domain.Transacao;
 import br.com.seubarriga.core.domain.enums.TipoMovimentacao;
+import br.com.seubarriga.core.utils.DateUtils;
+import io.restassured.RestAssured;
+import io.restassured.specification.FilterableRequestSpecification;
 
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class BarrigaTests extends BaseTest {
 	
-	private String token;
+	private static String contaName = "Conta " + System.nanoTime();
+	private static Integer contaId;
+	private static Integer movimentacaoId;
 	
-	@Before
-	public void login() {
+	@BeforeClass
+	public static void login() {
 		//login na api
 		//receber token
 		Map<String, String> login = new HashMap<>();
 		login.put("email", "luis@daniel");
 		login.put("senha", "123456");
 		
-		this.token = given()
+		String token = given()
 			.body(login)
 		.when()
 			.post("/signin")
@@ -38,63 +44,53 @@ public class BarrigaTests extends BaseTest {
 			.statusCode(200)
 			.extract().path("token")
 		;
+		
+		RestAssured.requestSpecification.header("Authorization", "JWT " + token);
 	}
 
 	@Test
-	public void naoDeveAcessarSemToken() {
-		
-		given()
-		.when()
-			.get("/contas")
-		.then()
-			.statusCode(401)
-		;
-	}
-	
-	@Test
-	public void deveIncluirContaComSucesso() {
+	public void t02_deveIncluirContaComSucesso() {
 		//Cadastro de conta
 		Map<String, String> conta = new HashMap<>();
-		conta.put("nome", "Conta para testes");
+		conta.put("nome", contaName);
 		
-		given()
+		contaId = given()
 			.body(conta)
-			.header("Authorization", "JWT " + token)
 		.when()
 			.post("/contas")
 		.then()
-			.statusCode(201);
+			.statusCode(201)
+			.extract().path("id")
 		;
 	}
 	
 	@Test
-	public void deveAlterarContaComSucesso() {
+	public void t03_deveAlterarContaComSucesso() {
 		//Atualização da conta
 		Map<String, String> conta = new HashMap<>();
-		conta.put("nome", "Conta alterada para testes");
+		conta.put("nome", contaName + " alterada");
 		
 			
 		given()
 			.body(conta)
-			.header("Authorization", "JWT " + token)
+			.pathParam("id", contaId)
 		.when()
-			.put("/contas/22091")
+			.put("/contas/{id}")
 		.then()
 			.statusCode(200)
-			.body("id", is(22091))
-			.body("nome", is("Conta alterada para testes"))
+			.body("id", is(contaId))
+			.body("nome", is(contaName + " alterada"))
 		;
 		
 	}
 	
 	@Test
-	public void naoDeveIncluirContaComNomeRepetido() {
+	public void t04_naoDeveIncluirContaComNomeRepetido() {
 		Map<String, String> conta = new HashMap<>();
-		conta.put("nome", "Conta alterada para testes");
+		conta.put("nome", contaName + " alterada");
 		
 		given()
 			.body(conta)
-			.header("Authorization", "JWT " + token)
 		.when()
 			.post("/contas")
 		.then()
@@ -104,25 +100,24 @@ public class BarrigaTests extends BaseTest {
 	}
 	
 	@Test
-	public void deveInserirMovimentacaoComSucesso() {
+	public void t05_deveInserirMovimentacaoComSucesso() {
 		Transacao transacao = this.getTransacaoValida();
 		
-		given()
-			.header("Authorization", "JWT " + token)
+		movimentacaoId = given()
 			.body(transacao)
 		.when()
 			.post("/transacoes")
 		.then()
 			.statusCode(201)
+			.extract().path("id")
 		;
 	}
 	
 	@Test 
-	public void deveValidarCamposObrigatorios() {
+	public void t06_deveValidarCamposObrigatorios() {
 		Transacao transacao = new Transacao();
 		
 		given()
-			.header("Authorization", "JWT " + token)
 			.body(transacao)
 		.when()
 			.post("/transacoes")
@@ -137,18 +132,11 @@ public class BarrigaTests extends BaseTest {
 	}
 	
 	@Test
-	public void naoDeveCadastrarMovimentacaoFutura() {
-		Transacao transacao = this.getTransacaoValida();
-		
-		SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/YYYY");
-		Calendar calendar = Calendar.getInstance();
-		int currentDay = calendar.get(Calendar.DAY_OF_MONTH);
-		calendar.set(Calendar.DAY_OF_MONTH, currentDay + 1);
-		
-		transacao.setData_transacao(sdf.format(calendar.getTime()));
+	public void t07_naoDeveCadastrarMovimentacaoFutura() {
+		Transacao transacao = this.getTransacaoValida();	
+		transacao.setData_transacao(DateUtils.getDataDiferencaDias(2));
 		
 		given()
-			.header("Authorization", "JWT " + token)
 			.body(transacao)
 		.when()
 			.post("/transacoes")
@@ -162,12 +150,12 @@ public class BarrigaTests extends BaseTest {
 	}
 	
 	@Test
-	public void naoDeveRemoverContaComMovimentacao() {
+	public void t08_naoDeveRemoverContaComMovimentacao() {
 		
 		given()
-			.header("Authorization", "JWT " + token)
+			.pathParam("id", contaId)
 		.when()
-			.delete("/contas/22091")
+			.delete("/contas/{id}")
 		.then()
 			.statusCode(500)
 			.body("constraint", is("transacoes_conta_id_foreign"))
@@ -175,32 +163,43 @@ public class BarrigaTests extends BaseTest {
 	}
 	
 	@Test
-	public void deveCalcularSaldoDasContas() {
+	public void t09_deveCalcularSaldoDasContas() {
 		given()
-			.header("Authorization", "JWT " + token)
 		.when()
 			.get("/saldo")
 		.then()
-			.log().all()
 			.statusCode(200)
-			.body("find{it.conta_id == 22091}.saldo", is("750.00"))
+			.body("find{it.conta_id ==" + contaId + "}.saldo", is("100.00"))
 		;
 	}
 	
 	@Test
-	public void deveRemoverMovimentacao() {
+	public void t10_deveRemoverMovimentacao() {
 		given()
-			.header("Authorization", "JWT " + token)
+			.pathParam("id", movimentacaoId)
 		.when()
-			.delete("/transacoes/15474")
+			.delete("/transacoes/{id}")
 		.then()
-			.log().all()
 			.statusCode(204)
 			;
 	}
 	
+	@Test
+	public void t11_naoDeveAcessarSemToken() {
+		FilterableRequestSpecification req = (FilterableRequestSpecification) RestAssured.requestSpecification;
+		req.removeHeader("Authorization");
+		
+		given()
+		.when()
+			.get("/contas")
+		.then()
+			.statusCode(401)
+		;
+	}
+	
+	
 	private Transacao getTransacaoValida() {
-		return new Transacao(22091, "Descrição da movimentação", 
-				"Envolvido na movimentação", TipoMovimentacao.RECEITA, "01/01/2000", "10/05/2010", 100f, true);
+		return new Transacao(contaId, "Descrição da movimentação", 
+				"Envolvido na movimentação", TipoMovimentacao.RECEITA, DateUtils.getDataDiferencaDias(-1), DateUtils.getDataDiferencaDias(5), 100f, true);
 	}
 }
