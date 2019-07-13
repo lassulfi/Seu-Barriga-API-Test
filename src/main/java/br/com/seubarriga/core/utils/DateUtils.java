@@ -21,4 +21,10 @@ public class DateUtils {
 		
 		return formatter.format(data);
 	}
+	
+	public static String getDataFormatoBanco(String data) {
+		String[] vetor = data.split("/");
+		
+		return vetor[2] + "-" + vetor[1] + "-" + vetor[0] + "T03:00:00.000Z" ;
+	}
 }
