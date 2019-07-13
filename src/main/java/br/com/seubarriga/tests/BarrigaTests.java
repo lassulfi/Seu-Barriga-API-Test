@@ -1,7 +1,6 @@
 package br.com.seubarriga.tests;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
@@ -184,8 +183,20 @@ public class BarrigaTests extends BaseTest {
 		.then()
 			.log().all()
 			.statusCode(200)
-			.body("find{it.conta_id == 22091}.saldo", is("650"))
+			.body("find{it.conta_id == 22091}.saldo", is("750.00"))
 		;
+	}
+	
+	@Test
+	public void deveRemoverMovimentacao() {
+		given()
+			.header("Authorization", "JWT " + token)
+		.when()
+			.delete("/transacoes/15474")
+		.then()
+			.log().all()
+			.statusCode(204)
+			;
 	}
 	
 	private Transacao getTransacaoValida() {
